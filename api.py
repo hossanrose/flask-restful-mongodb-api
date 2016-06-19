@@ -35,7 +35,7 @@ class Devices(Resource):
             data = {"response": "ERROR"}
             return jsonify(data)
         else:
-            data['Time'] = datetime.now().strftime("%y-%m-%d %H:%M:%S")
+            data['Time'] = int (datetime.now().strftime("%s")) * 1000 
             print data
             mongo.db.device.insert(data)
 
