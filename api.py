@@ -5,37 +5,26 @@ from flask_pymongo import PyMongo
 from flask_restful import Api, Resource
 
 app = Flask(__name__)
-app.config["MONGO_DBNAME"] = "students_db"
+app.config["MONGO_DBNAME"] = "iot_db"
 mongo = PyMongo(app, config_prefix='MONGO')
-APP_URL = "http://127.0.0.1:5000"
 
-
-class Student(Resource):
-    def get(self, registration=None, department=None):
+class Devices(Resource):
+    def get(self, device_key=None):
         data = []
 
-        if registration:
-            studnet_info = mongo.db.student.find_one({"registration": registration}, {"_id": 0})
-            if studnet_info:
-                return jsonify({"status": "ok", "data": studnet_info})
-            else:
-                return {"response": "no student found for {}".format(registration)}
+        if device_key:
+            cursor = mongo.db.device.find({"device_key": device_key}, {"_id": 0}).limit(10)
+            for device in cursor:
+                data.append(device)
 
-        elif department:
-            cursor = mongo.db.student.find({"department": department}, {"_id": 0}).limit(10)
-            for student in cursor:
-                student['url'] = APP_URL + url_for('students') + "/" + student.get('registration')
-                data.append(student)
-
-            return jsonify({"department": department, "response": data})
+            return jsonify({"device": device_key, "response": data})
 
         else:
-            cursor = mongo.db.student.find({}, {"_id": 0, "update_time": 0}).limit(10)
+            cursor = mongo.db.device.find({}, {"_id": 0, "update_time": 0}).limit(10)
 
-            for student in cursor:
-                print student
-                student['url'] = APP_URL + url_for('students') + "/" + student.get('registration')
-                data.append(student)
+            for device in cursor:
+                print device
+                data.append(device)
 
             return jsonify({"response": data})
 
@@ -45,37 +34,19 @@ class Student(Resource):
             data = {"response": "ERROR"}
             return jsonify(data)
         else:
-            registration = data.get('registration')
-            if registration:
-                if mongo.db.student.find_one({"registration": registration}):
-                    return {"response": "student already exists."}
-                else:
-                    mongo.db.student.insert(data)
-            else:
-                return {"response": "registration number missing"}
+            mongo.db.device.insert(data)
 
-        return redirect(url_for("students"))
-
-    def put(self, registration):
-        data = request.get_json()
-        mongo.db.student.update({'registration': registration}, {'$set': data})
-        return redirect(url_for("students"))
-
-    def delete(self, registration):
-        mongo.db.student.remove({'registration': registration})
-        return redirect(url_for("students"))
-
+        return redirect(url_for("device"))
 
 class Index(Resource):
     def get(self):
-        return redirect(url_for("students"))
+        return redirect(url_for("device"))
 
 
 api = Api(app)
 api.add_resource(Index, "/", endpoint="index")
-api.add_resource(Student, "/api", endpoint="students")
-api.add_resource(Student, "/api/<string:registration>", endpoint="registration")
-api.add_resource(Student, "/api/department/<string:department>", endpoint="department")
+api.add_resource(Devices, "/api", endpoint="device")
+api.add_resource(Devices, "/api/<string:device_key>", endpoint="device_key")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True,host='0.0.0.0')
